@@ -4,8 +4,7 @@ defmodule Rox.UtilsTest do
   import Rox.Utils
 
   test "encode / decode cycle" do
-    input =
-      %{name: "Bob"}
+    input = %{name: "Bob"}
 
     output =
       input

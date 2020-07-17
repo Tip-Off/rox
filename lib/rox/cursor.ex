@@ -9,18 +9,19 @@ defmodule Rox.Cursor do
 
   @typedoc "A cursor for iterating over a database or column family"
   @type t :: %__MODULE__{
-    resource: binary, mode: mode, options: options
-  }
+          resource: binary,
+          mode: mode,
+          options: options
+        }
 
   defstruct [:resource, :mode, :options]
 
-  @type mode :: :start | :end | {:from, Rox.key, :forward | :backward}
+  @type mode :: :start | :end | {:from, Rox.key(), :forward | :backward}
 
   @doc false
   def wrap_resource(resource, mode, options \\ []) do
     %__MODULE__{resource: resource, mode: mode, options: options}
   end
-
 
   defimpl Inspect do
     def inspect(_, _) do
@@ -28,9 +29,8 @@ defmodule Rox.Cursor do
     end
   end
 
-
   defimpl Enumerable do
-    alias Rox.{Cursor,Native,Utils}
+    alias Rox.{Cursor, Native, Utils}
 
     def count(_), do: {:error, __MODULE__}
     def member?(_, _), do: {:error, __MODULE__}
@@ -39,9 +39,11 @@ defmodule Rox.Cursor do
       Native.iterator_reset(raw, mode)
       {:halted, acc}
     end
+
     def reduce(%Cursor{} = cursor, {:suspend, acc}, fun) do
       {:suspended, acc, &reduce(cursor, &1, fun)}
     end
+
     def reduce(%Cursor{resource: raw, mode: mode, options: options} = cursor, {:cont, acc}, fun) do
       case Native.iterator_next(raw) do
         :done ->
@@ -49,8 +51,7 @@ defmodule Rox.Cursor do
           {:done, acc}
 
         {key, value} ->
-          value =
-            if options[:decode_values] == false, do: value, else: Utils.decode(value)
+          value = if options[:decode_values] == false, do: value, else: Utils.decode(value)
 
           reduce(cursor, fun.({key, value}, acc), fun)
       end

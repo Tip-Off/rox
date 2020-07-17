@@ -1,14 +1,24 @@
 defmodule RoxBench do
   use Benchfella
 
-  @sample_record %{name: "Bob", age: 38, favorite_color: "Blue", gender: :male, is_likeable: false, pets: [%{name: "Woof", species: :dog}]}
+  @sample_record %{
+    name: "Bob",
+    age: 38,
+    favorite_color: "Blue",
+    gender: :male,
+    is_likeable: false,
+    pets: [%{name: "Woof", species: :dog}]
+  }
 
   setup_all do
-    :ok =
-      Application.ensure_started(:faker)
-    
+    :ok = Application.ensure_started(:faker)
+
     {:ok, db, cfs} =
-      Rox.open("./bench.rocksdb", [create_if_missing: true, auto_create_column_families: true], ["a", "b", "c"])
+      Rox.open("./bench.rocksdb", [create_if_missing: true, auto_create_column_families: true], [
+        "a",
+        "b",
+        "c"
+      ])
 
     {:ok, %{db: db, cfs: cfs, default_cf: cfs["a"]}}
   end
@@ -27,9 +37,8 @@ defmodule RoxBench do
   end
 
   defp random_record() do
-    num_pets =
-      :crypto.rand_uniform(0, 3)
-    
+    num_pets = :crypto.rand_uniform(0, 3)
+
     %{
       name: Faker.Name.name(),
       age: :crypto.rand_uniform(20, 50),
@@ -43,7 +52,7 @@ defmodule RoxBench do
   defp random_pet() do
     %{
       name: Faker.Name.first_name(),
-      age: :crypto.rand_uniform(1, 7),
+      age: :crypto.rand_uniform(1, 7)
     }
   end
 end

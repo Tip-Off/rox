@@ -8,32 +8,31 @@ defmodule Rox.BatchTest do
       batches = [
         %Batch{operations: [put: {"key_a", "value_a"}]},
         %Batch{operations: [put: {"key_b", "value_b"}]},
-        %Batch{operations: [delete: "key_a"]},
+        %Batch{operations: [delete: "key_a"]}
       ]
 
       assert Batch.merge(batches) == %Batch{
-        operations: [
-          delete: "key_a",
-          put: {"key_b", "value_b"},
-          put: {"key_a", "value_a"},
-        ]
-      }
+               operations: [
+                 delete: "key_a",
+                 put: {"key_b", "value_b"},
+                 put: {"key_a", "value_a"}
+               ]
+             }
     end
 
     test "works when a single batch contains multiple operations" do
       batches = [
         %Batch{operations: [put: {"key_b", "value_b"}, put: {"key_a", "value_a"}]},
-        %Batch{operations: [delete: "key_a"]},
+        %Batch{operations: [delete: "key_a"]}
       ]
 
       assert Batch.merge(batches) == %Batch{
-        operations: [
-          delete: "key_a",
-          put: {"key_b", "value_b"},
-          put: {"key_a", "value_a"},
-        ]
-      }
+               operations: [
+                 delete: "key_a",
+                 put: {"key_b", "value_b"},
+                 put: {"key_a", "value_a"}
+               ]
+             }
     end
   end
-
 end

@@ -1,7 +1,7 @@
 defmodule Rox.Native do
   use Rustler, otp_app: :rox, crate: "rox_nif"
 
-  @dialyzer {:nowarn_function, [__init__: 0,]}
+  @dialyzer {:nowarn_function, [__init__: 0]}
 
   def open(_, _, _) do
     case :erlang.phash2(1, 1) do

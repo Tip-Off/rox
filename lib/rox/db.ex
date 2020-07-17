@@ -13,7 +13,6 @@ defmodule Rox.DB do
   @type t :: %__MODULE__{resource: binary, reference: reference}
   defstruct [:resource, :reference]
 
-
   @doc false
   def wrap_resource(resource) do
     %__MODULE__{resource: resource, reference: make_ref()}
@@ -37,6 +36,7 @@ defmodule Rox.DB do
         _ -> {:ok, false}
       end
     end
+
     def member?(_, _), do: {:ok, false}
 
     def reduce(db, cmd, fun) do
@@ -51,8 +51,10 @@ defmodule Rox.DB do
         db, {:cont, {key, val}} when is_binary(key) ->
           :ok = Rox.put(db, key, val)
           db
+
         db, :done ->
           db
+
         _, :halt ->
           :ok
       end

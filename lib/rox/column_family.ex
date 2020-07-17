@@ -13,11 +13,11 @@ defmodule Rox.ColumnFamily do
 
   @typedoc "A reference to a RocksDB column family"
   @type t :: %__MODULE__{
-    db_resource: binary,
-    cf_resource: binary,
-    db_reference: reference,
-    name: binary,
-  }
+          db_resource: binary,
+          cf_resource: binary,
+          db_reference: reference,
+          name: binary
+        }
   defstruct [:db_reference, :db_resource, :cf_resource, :name]
 
   @type name :: binary
@@ -59,6 +59,7 @@ defmodule Rox.ColumnFamily do
         _ -> {:ok, false}
       end
     end
+
     def member?(_, _), do: {:ok, false}
 
     def reduce(cf, cmd, fun) do
@@ -73,8 +74,10 @@ defmodule Rox.ColumnFamily do
         cf, {:cont, {key, val}} ->
           :ok = Rox.put(cf, key, val)
           cf
+
         cf, :done ->
           cf
+
         _, :halt ->
           :ok
       end

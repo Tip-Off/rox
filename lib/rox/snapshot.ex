@@ -9,14 +9,12 @@ defmodule Rox.Snapshot do
 
   alias Rox.DB
 
-
-
   @typedoc "A reference to a RocksDB database snapshot"
   @type t :: %__MODULE__{
-    resource: binary,
-    reference: reference,
-    db: DB.t
-  }
+          resource: binary,
+          reference: reference,
+          db: DB.t()
+        }
 
   @enforce_keys [:resource, :reference, :db]
   defstruct [
@@ -48,6 +46,7 @@ defmodule Rox.Snapshot do
         _ -> {:ok, false}
       end
     end
+
     def member?(_, _), do: {:ok, false}
 
     def reduce(snapshot, cmd, fun) do
