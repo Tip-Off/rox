@@ -2,7 +2,6 @@
 extern crate rustler;
 extern crate rocksdb;
 
-use std::fs;
 use std::io::Write;
 use std::ops::Deref;
 use std::path::Path;
@@ -133,7 +132,6 @@ mod atoms {
         // atom wal_ttl_seconds;
         // atom wal_size_limit_mb;
         // atom manifest_preallocation_size;
-        // atom allow_os_buffer;
         // atom allow_mmap_reads;
         // atom allow_mmap_writes;
         // atom is_fd_close_on_exec;
@@ -327,11 +325,6 @@ fn decode_db_options<'a>(env: Env<'a>, arg: Term<'a>) -> NifResult<Options> {
 
     if let Ok(bytes_per_sync) = arg.map_get(atoms::bytes_per_sync().to_term(env)) {
         opts.set_bytes_per_sync(bytes_per_sync.decode()?);
-    }
-
-    if let Ok(allow_os_buffer) = arg.map_get(atoms::allow_os_buffer().to_term(env)) {
-        #[allow(deprecated)]
-        opts.set_allow_os_buffer(allow_os_buffer.decode()?);
     }
 
     if let Ok(nbits) = arg.map_get(atoms::table_cache_num_shard_bits().to_term(env)) {
