@@ -48,14 +48,14 @@ defmodule Rox.Native do
     end
   end
 
-  def get(_, _, _) do
+  def get(_, _) do
     case :erlang.phash2(1, 1) do
       0 -> raise "Nif not loaded"
       1 -> {:ok, ""}
     end
   end
 
-  def get_cf(_, _, _, _) do
+  def get_cf(_, _, _) do
     case :erlang.phash2(1, 1) do
       0 -> raise "Nif not loaded"
       1 -> {:ok, ""}

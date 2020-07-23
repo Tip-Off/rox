@@ -17,11 +17,7 @@ defmodule Rox do
   @type block_based_table_options :: [
           {:no_block_cache, boolean}
           | {:block_size, pos_integer}
-          | {:block_cache_size, pos_integer}
-          | {:bloom_filter_policy, bits_per_key :: pos_integer}
-          | {:format_version, 0 | 1 | 2}
-          | {:skip_table_builder_flush, boolean}
-          | {:cache_index_and_filter_blocks, boolean}
+          | {:metadata_block_size, pos_integer}
         ]
 
   @type access_hint :: :normal | :sequential | :willneed | :none
@@ -32,7 +28,8 @@ defmodule Rox do
           | :skip_any_corrupted_records
 
   @type db_options :: [
-          {:total_threads, pos_integer}
+          {:block_based_options, block_based_table_options}
+          | {:total_threads, pos_integer}
           | {:optimize_level_type_compaction_memtable_memory_budget, integer}
           | {:auto_create_column_families, boolean}
           | {:create_if_missing, boolean}
@@ -53,7 +50,7 @@ defmodule Rox do
           | {:level_zero_file_num_compaction_trigger, non_neg_integer}
           | {:level_zero_slowdown_writes_trigger, non_neg_integer}
           | {:level_zero_stop_writes_trigger, non_neg_integer}
-          | {:compaction_style, compaction_style}
+          # | {:compaction_style, compaction_style}
           | {:max_background_compactions, pos_integer}
           | {:max_background_flushes, pos_integer}
           | {:disable_auto_compactions, boolean}
@@ -61,8 +58,6 @@ defmodule Rox do
           | {:num_levels, pos_integer}
           | {:use_direct_io_for_flush_and_compaction, boolean}
         ]
-
-  @type read_options :: [{:fill_cache, boolean} | {:iterate_upper_bound, binary}]
 
   @type write_options :: [{:sync, boolean} | {:disable_wal, boolean}]
 
@@ -84,13 +79,15 @@ defmodule Rox do
       when is_binary(path) and is_list(db_opts) and is_list(column_families) do
     auto_create_cfs? = db_opts[:auto_create_column_families]
 
+    db_opts = db_options_to_map(db_opts)
+
     case column_families do
       [] ->
         do_open_db_with_no_cf(path, db_opts)
 
       _ ->
         # First try opening with existing column families
-        with {:ok, db} <- Native.open(path, to_map(db_opts), column_families) do
+        with {:ok, db} <- Native.open(path, db_opts, column_families) do
           {:ok, DB.wrap_resource(db)}
         else
           {:error, <<"Invalid argument: Column family not found:", _rest::binary>>}
@@ -104,7 +101,7 @@ defmodule Rox do
   end
 
   defp do_open_db_with_no_cf(path, opts) do
-    with {:ok, db} <- Native.open(path, to_map(opts), []) do
+    with {:ok, db} <- Native.open(path, opts, []) do
       {:ok, DB.wrap_resource(db)}
     end
   end
@@ -123,7 +120,7 @@ defmodule Rox do
   """
   @spec create_cf(DB.t(), ColumnFamily.t(), db_options) :: :ok | {:error, any}
   def create_cf(%DB{resource: raw_db}, name, opts \\ []),
-    do: Native.create_cf(raw_db, name, to_map(opts))
+    do: Native.create_cf(raw_db, name, db_options_to_map(opts))
 
   @doc """
   Lists the existing column family names of the database at the given path.
@@ -166,28 +163,23 @@ defmodule Rox do
   @doc """
   Get a key/value pair in the given database with the specified `key`.
 
-  Optionally takes a list of `read_options`.
-
   For non-binary terms that were stored, they will be automatically decoded.
 
   """
-  @spec get(DB.t(), key, read_options) :: {:ok, value} | :not_found | {:error, any}
-  def get(%DB{resource: db}, key, opts \\ []) when is_binary(key) and is_list(opts),
-    do: db |> Native.get(key, to_map(opts)) |> Utils.decode()
+  @spec get(DB.t(), key) :: {:ok, value} | :not_found | {:error, any}
+  def get(%DB{resource: db}, key) when is_binary(key), do: db |> Native.get(key) |> Utils.decode()
 
   @doc """
   Get a key/value pair in the given column family with the specified `key`.
 
-  Optionally takes a list of `read_options`.
-
   For non-binary terms that were stored, they will be automatically decoded.
 
   """
 
-  @spec get_cf(DB.t(), ColumnFamily.t(), key, read_options) ::
+  @spec get_cf(DB.t(), ColumnFamily.t(), key) ::
           {:ok, value} | :not_found | {:error, any}
-  def get_cf(%DB{resource: db}, cf, key, opts \\ []) when is_binary(key) and is_list(opts),
-    do: db |> Native.get_cf(cf, key, to_map(opts)) |> Utils.decode()
+  def get_cf(%DB{resource: db}, cf, key) when is_binary(key),
+    do: db |> Native.get_cf(cf, key) |> Utils.decode()
 
   @doc """
   Return the approximate number of keys in the database.
@@ -220,6 +212,9 @@ defmodule Rox do
   @spec delete_cf(DB.t(), ColumnFamily.t(), key, write_options) :: :ok | {:error, any}
   def delete_cf(%DB{resource: db}, cf, key, write_opts \\ []),
     do: Native.delete_cf(db, cf, key, to_map(write_opts))
+
+  defp db_options_to_map(db_options),
+    do: db_options |> to_map() |> Map.update(:block_based_options, %{}, &to_map(&1))
 
   defp to_map(map) when is_map(map), do: map
   defp to_map([]), do: %{}

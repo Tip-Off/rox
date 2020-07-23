@@ -2,6 +2,7 @@
 extern crate rustler;
 extern crate rocksdb;
 
+use std::fs;
 use std::io::Write;
 use std::ops::Deref;
 use std::path::Path;
@@ -11,7 +12,7 @@ use rustler::resource::ResourceArc;
 
 use rustler::{Decoder, Encoder, Env, Error, NifResult, Term};
 
-use rocksdb::{DBCompressionType, IteratorMode, Options, WriteBatch, WriteOptions, DB};
+use rocksdb::{DBCompressionType, IteratorMode, Options, WriteBatch, WriteOptions, BlockBasedOptions, DB};
 
 use rustler::types::binary::{Binary, OwnedBinary};
 use rustler::types::list::ListIterator;
@@ -37,13 +38,22 @@ mod atoms {
         atom none;
 
         // Block Based Table Option atoms
-        // atom no_block_cache;
-        // atom block_size;
-        // atom block_cache_size;
-        // atom bloom_filter_policy;
-        // atom format_version;
-        // atom skip_table_builder_flush;
+        atom block_size;
+        atom metadata_block_size;
+        // atom partition_filters;
+        // atom block_cache;
+        // atom block_cache_compressed;
+        atom no_block_cache;
+        // atom bloom_filter;
         // atom cache_index_and_filter_blocks;
+        // atom index_type;
+        // atom pin_l0_filter_and_index_blocks_in_cache;
+        // atom pin_top_level_index_and_filter;
+        // atom format_version;
+        // atom block_restart_interval;
+        // atom index_block_restart_interval;
+        // atom data_block_index_type;
+        // atom data_block_hash_ratio;
 
         // CF Options Related atoms
         // atom block_cache_size_mb_for_point_lookup;
@@ -80,8 +90,10 @@ mod atoms {
         // atom block_based_table_options;
 
         // DB Options
+        atom block_based_options;
         atom total_threads;
         atom optimize_level_type_compaction_memtable_memory_budget;
+        atom auto_create_column_families;
         atom create_if_missing;
         atom max_open_files;
         atom compression_type;
@@ -136,10 +148,6 @@ mod atoms {
         // atom skip_stats_update_on_db_open;
         // atom wal_recovery_mode;
         atom use_direct_io_for_flush_and_compaction;
-
-        // Read Options
-        // atom fill_cache;
-        // atom iterate_upper_bound;
 
         // Write Options
         atom sync;
@@ -254,8 +262,38 @@ fn decode_write_options<'a>(env: Env<'a>, arg: Term<'a>) -> NifResult<WriteOptio
     Ok(opts)
 }
 
+fn decode_block_based_options<'a>(env: Env<'a>, arg: Term<'a>) -> NifResult<BlockBasedOptions> {
+    let mut opts = BlockBasedOptions::default();
+
+    if let Ok(block_size) = arg.map_get(atoms::block_size().to_term(env)) {
+        let i_size: u64 = block_size.decode()?;
+        opts.set_block_size(i_size as usize);
+    }
+
+    if let Ok(metadata_block_size) = arg.map_get(atoms::metadata_block_size().to_term(env)) {
+        let i_size: u64 = metadata_block_size.decode()?;
+        opts.set_metadata_block_size(i_size as usize);
+    }
+
+    if let Ok(no_block_cache) = arg.map_get(atoms::no_block_cache().to_term(env)) {
+        let value: bool = no_block_cache.decode()?;
+
+        if value {
+            opts.disable_cache();
+        }
+    }
+
+    Ok(opts)
+}
+
 fn decode_db_options<'a>(env: Env<'a>, arg: Term<'a>) -> NifResult<Options> {
     let mut opts = Options::default();
+
+    if let Ok(block_based_opts) = arg.map_get(atoms::block_based_options().to_term(env)) {
+        let block_based_opts = decode_block_based_options(env, block_based_opts)?;
+
+        opts.set_block_based_table_factory(&block_based_opts);
+    }
 
     if let Ok(count) = arg.map_get(atoms::total_threads().to_term(env)) {
         opts.increase_parallelism(count.decode()?);
@@ -272,16 +310,16 @@ fn decode_db_options<'a>(env: Env<'a>, arg: Term<'a>) -> NifResult<Options> {
         opts.create_if_missing(create_if_missing.decode()?);
     }
 
+    if let Ok(max_open_files) = arg.map_get(atoms::max_open_files().to_term(env)) {
+        opts.set_max_open_files(max_open_files.decode()?);
+    }
+
     if let Ok(compression_type_opt) = arg.map_get(atoms::compression_type().to_term(env)) {
         let compression_type: CompressionType = compression_type_opt.decode()?;
         opts.set_compression_type(compression_type.into());
     }
 
     // TODO: Set Compression Type Per Level
-
-    if let Ok(max_open_files) = arg.map_get(atoms::max_open_files().to_term(env)) {
-        opts.set_max_open_files(max_open_files.decode()?);
-    }
 
     if let Ok(use_fsync) = arg.map_get(atoms::use_fsync().to_term(env)) {
         opts.set_use_fsync(use_fsync.decode()?);
@@ -620,8 +658,8 @@ rustler_export_nifs!(
         ("delete_cf", 4, delete_cf),
         ("count", 1, count),
         ("list_cf", 2, list_cf),
-        ("get", 3, get),
-        ("get_cf", 4, get_cf),
+        ("get", 2, get),
+        ("get_cf", 3, get_cf),
         ("batch_write", 2, batch_write),
     ],
     Some(on_load)
