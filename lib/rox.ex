@@ -37,7 +37,6 @@ defmodule Rox do
           | {:compression_type, compression_type}
           | {:use_fsync, boolean}
           | {:bytes_per_sync, pos_integer}
-          | {:allow_os_buffer, boolean}
           | {:table_cache_num_shard_bits, pos_integer}
           | {:min_write_buffer_number, pos_integer}
           | {:max_write_buffer_number, pos_integer}
@@ -56,6 +55,7 @@ defmodule Rox do
           | {:disable_auto_compactions, boolean}
           | {:report_bg_io_stats, boolean}
           | {:num_levels, pos_integer}
+          | {:use_direct_reads, boolean}
           | {:use_direct_io_for_flush_and_compaction, boolean}
         ]
 

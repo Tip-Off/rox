@@ -99,7 +99,6 @@ mod atoms {
         atom compression_type;
         atom use_fsync;
         atom bytes_per_sync;
-        atom allow_os_buffer;
         atom table_cache_num_shard_bits;
         atom min_write_buffer_number;
         atom max_write_buffer_number;
@@ -147,6 +146,7 @@ mod atoms {
         // atom bytes_per_sync;
         // atom skip_stats_update_on_db_open;
         // atom wal_recovery_mode;
+        atom use_direct_reads;
         atom use_direct_io_for_flush_and_compaction;
 
         // Write Options
@@ -410,6 +410,10 @@ fn decode_db_options<'a>(env: Env<'a>, arg: Term<'a>) -> NifResult<Options> {
 
     if let Ok(enabled) = arg.map_get(atoms::use_direct_io_for_flush_and_compaction().to_term(env)) {
         opts.set_use_direct_io_for_flush_and_compaction(enabled.decode()?);
+    }
+
+    if let Ok(enabled) = arg.map_get(atoms::use_direct_reads().to_term(env)) {
+        opts.set_use_direct_reads(enabled.decode()?);
     }
 
     Ok(opts)
