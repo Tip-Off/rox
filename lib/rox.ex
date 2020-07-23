@@ -4,15 +4,13 @@ defmodule Rox do
 
   """
 
-  alias __MODULE__.{DB, ColumnFamily, Native, Utils, Cursor, Snapshot}
+  alias __MODULE__.{DB, ColumnFamily, Native, Utils}
 
   @type compaction_style :: :level | :universal | :fifo | :none
   @type compression_type :: :snappy | :zlib | :bzip2 | :lz4 | :lz4h | :none
 
   @type key :: String.t() | binary
   @type value :: any
-
-  @opaque snapshot_handle :: :erocksdb.snapshot_handle()
 
   @type file_path :: String.t()
 
@@ -81,10 +79,7 @@ defmodule Rox do
   The database will automatically be closed when the BEAM VM releases it for garbage collection.
 
   """
-  @spec open(file_path, db_options, [ColumnFamily.name()]) ::
-          {:ok, DB.t()}
-          | {:ok, DB.t(), %{ColumnFamily.name() => ColumnFamily.t()}}
-          | {:error, any}
+  @spec open(file_path, db_options, [ColumnFamily.t()]) :: {:ok, DB.t()} | {:error, any}
   def open(path, db_opts \\ [], column_families \\ [])
       when is_binary(path) and is_list(db_opts) and is_list(column_families) do
     auto_create_cfs? = db_opts[:auto_create_column_families]
@@ -95,14 +90,8 @@ defmodule Rox do
 
       _ ->
         # First try opening with existing column families
-        with {:ok, db} <- Native.open(path, to_map(db_opts), column_families),
-             db <- DB.wrap_resource(db),
-             {:ok, cf_handles} <- map_or_error(column_families, &cf_handle(db, &1)) do
-          cf_map =
-            Enum.zip(column_families, cf_handles)
-            |> Enum.into(%{})
-
-          {:ok, db, cf_map}
+        with {:ok, db} <- Native.open(path, to_map(db_opts), column_families) do
+          {:ok, DB.wrap_resource(db)}
         else
           {:error, <<"Invalid argument: Column family not found:", _rest::binary>>}
           when auto_create_cfs? ->
@@ -121,27 +110,10 @@ defmodule Rox do
   end
 
   defp do_open_db_and_create_cfs(path, opts, column_families) do
-    with {:ok, db} <- do_open_db_with_no_cf(path, opts),
-         {:ok, cf_handles} <- map_or_error(column_families, &create_cf(db, &1, opts)) do
-      cf_map =
-        Enum.zip(column_families, cf_handles)
-        |> Enum.into(%{})
+    with {:ok, db} <- do_open_db_with_no_cf(path, opts) do
+      Enum.each(column_families, fn cf -> :ok = create_cf(db, cf, opts) end)
 
-      {:ok, db, cf_map}
-    end
-  end
-
-  @doc """
-  Creates a point-in-time snapshot of the given `DB`.
-
-  Snapshots are read only views of the database at a point in time - no changes to the database will
-  be reflected in the view of the snapshot.
-
-  """
-  @spec create_snapshot(DB.t()) :: {:ok, Snapshot.t()} | {:error, any}
-  def create_snapshot(db) do
-    with {:ok, snapshot} <- Native.create_snapshot(db.resource) do
-      {:ok, Snapshot.wrap_resource(db, snapshot)}
+      {:ok, db}
     end
   end
 
@@ -149,34 +121,9 @@ defmodule Rox do
   Create a column family in `db` with `name` and `opts`.
 
   """
-  @spec create_cf(DB.t(), ColumnFamily.name(), db_options) ::
-          {:ok, ColumnFamily.t()} | {:error, any}
-  def create_cf(%DB{resource: raw_db} = db, name, opts \\ []) do
-    with {:ok, result} <- Native.create_cf(raw_db, name, to_map(opts)) do
-      {:ok, ColumnFamily.wrap_resource(db, result, name)}
-    end
-  end
-
-  @doc """
-  Gets an existing `ColumnFamily.t` from the database or snapshot.
-
-  The column family must have been created via `create_cf/2` or from `open/3` with the
-  `auto_create_column_families` option.
-
-  """
-  @spec cf_handle(DB.t() | Snapshot.t(), ColumnFamily.name()) ::
-          {:ok, ColumnFamily.t()} | {:error, any}
-  def cf_handle(%DB{resource: raw_db} = db, name) do
-    with {:ok, result} <- Native.cf_handle(raw_db, name) do
-      {:ok, ColumnFamily.wrap_resource(db, result, name)}
-    end
-  end
-
-  def cf_handle(%Snapshot{db: %DB{resource: raw_db}} = snapshot, name) do
-    with {:ok, result} <- Native.cf_handle(raw_db, name) do
-      {:ok, ColumnFamily.wrap_resource(snapshot, result, name)}
-    end
-  end
+  @spec create_cf(DB.t(), ColumnFamily.t(), db_options) :: :ok | {:error, any}
+  def create_cf(%DB{resource: raw_db}, name, opts \\ []),
+    do: Native.create_cf(raw_db, name, to_map(opts))
 
   @doc """
   Lists the existing column family names of the database at the given path.
@@ -190,167 +137,91 @@ defmodule Rox do
   end
 
   @doc """
-  Put a key/value pair into the specified database or column family.
+  Put a key/value pair into the specified database.
 
   Optionally takes a list of `write_options`.
 
   Non-binary values will automatically be encoded using the `:erlang.term_to_binary/1` function.
 
   """
-  @spec put(DB.t() | ColumnFamily.t(), key, value, write_options) :: :ok | {:error, any}
-  def put(db_or_cf, key, value, write_opts \\ [])
 
-  def put(%DB{resource: db}, key, value, write_opts) when is_binary(key) and is_list(write_opts),
-    do: Native.put(db, key, Utils.encode(value), to_map(write_opts))
-
-  def put(%ColumnFamily{db_resource: db, cf_resource: cf}, key, value, write_opts)
-      when is_binary(key),
-      do: Native.put_cf(db, cf, key, Utils.encode(value), to_map(write_opts))
+  @spec put(DB.t(), key, value, write_options) :: :ok | {:error, any}
+  def put(%DB{resource: db}, key, value, write_opts \\ [])
+      when is_binary(key) and is_list(write_opts),
+      do: Native.put(db, key, Utils.encode(value), to_map(write_opts))
 
   @doc """
-  Get a key/value pair in the given column family of the given snapshot or database with the
-  specified `key`.
+  Put a key/value pair into the specified column family.
+
+  Optionally takes a list of `write_options`.
+
+  Non-binary values will automatically be encoded using the `:erlang.term_to_binary/1` function.
+
+  """
+
+  @spec put_cf(DB.t(), ColumnFamily.t(), key, value, write_options) :: :ok | {:error, any}
+  def put_cf(%DB{resource: db}, cf, key, value, write_opts \\ []) when is_binary(key),
+    do: Native.put_cf(db, cf, key, Utils.encode(value), to_map(write_opts))
+
+  @doc """
+  Get a key/value pair in the given database with the specified `key`.
 
   Optionally takes a list of `read_options`.
 
   For non-binary terms that were stored, they will be automatically decoded.
 
   """
-  @spec get(DB.t() | ColumnFamily.t() | Snapshot.t(), key, read_options) ::
-          {:ok, value}
-          | :not_found
-          | {:error, any}
-  def get(db_snapshot_or_cf, key, opts \\ [])
-
-  def get(%DB{resource: db}, key, opts) when is_binary(key) and is_list(opts) do
-    Native.get(db, key, to_map(opts))
-    |> Utils.decode()
-  end
-
-  def get(%ColumnFamily{db_resource: db, cf_resource: cf}, key, opts)
-      when is_binary(key) and is_list(opts) do
-    Native.get_cf(db, cf, key, to_map(opts))
-    |> Utils.decode()
-  end
-
-  def get(%Snapshot{resource: snapshot}, key, opts) when is_binary(key) and is_list(opts) do
-    Native.get(snapshot, key, to_map(opts))
-    |> Utils.decode()
-  end
+  @spec get(DB.t(), key, read_options) :: {:ok, value} | :not_found | {:error, any}
+  def get(%DB{resource: db}, key, opts \\ []) when is_binary(key) and is_list(opts),
+    do: db |> Native.get(key, to_map(opts)) |> Utils.decode()
 
   @doc """
-  Returns a `Cursor.t` which will iterate records from the provided database or
-  column family.
+  Get a key/value pair in the given column family with the specified `key`.
 
-  Optionally takes an `Rox.Cursor.mode`. Defaults to `:start`.
+  Optionally takes a list of `read_options`.
 
-  The default arguments of this function is used for the `Enumerable` implementation
-  for `DB` and `ColumnFamily` structs.
-
-  Note: The result of stream is a cursor which is *not* meant to be shared across processes.
-  Iterating over the cursor will result in an internal state in RocksDB being modified.
-  If two processes try and use the same cursor, they will consume
-  each others results. This may or may not be desired.
+  For non-binary terms that were stored, they will be automatically decoded.
 
   """
-  @spec stream(DB.t() | ColumnFamily.t(), Rox.Cursor.mode()) :: Cursor.t() | {:error, any}
-  def stream(db_or_cf, mode \\ :start)
 
-  def stream(%DB{resource: db}, mode) do
-    with {:ok, resource} = Native.iterate(db, mode) do
-      Cursor.wrap_resource(resource, mode)
-    end
-  end
-
-  def stream(%ColumnFamily{db_resource: db, cf_resource: cf}, mode) do
-    with {:ok, resource} = Native.iterate_cf(db, cf, mode) do
-      Cursor.wrap_resource(resource, mode)
-    end
-  end
-
-  def stream(%Snapshot{resource: snapshot}, mode) do
-    with {:ok, resource} <- Native.iterate(snapshot, mode) do
-      Cursor.wrap_resource(resource, mode)
-    end
-  end
+  @spec get_cf(DB.t(), ColumnFamily.t(), key, read_options) ::
+          {:ok, value} | :not_found | {:error, any}
+  def get_cf(%DB{resource: db}, cf, key, opts \\ []) when is_binary(key) and is_list(opts),
+    do: db |> Native.get_cf(cf, key, to_map(opts)) |> Utils.decode()
 
   @doc """
-  Returns a `Cursor.t` which will iterate *keys* from the provided database or column family.
-
-  Optionally takes a `Rox.Cursor.mode`, which defaults to `:start`.
-
-  Note: The result of `stream_keys` is a cursor which is *not* meant to be shared across processes.
-  Iterating over the cursor will result in an internal state in RocksDB being modified.
-  If two processes try and use the same cursor, they will consume
-  each others results. This may or may not be desired.
-
-  """
-  @spec stream_keys(DB.t() | ColumnFamily.t(), Rox.Cursor.mode()) :: Cursor.t() | {:error, any}
-  def stream_keys(db_or_cf, mode \\ :start)
-
-  def stream_keys(%DB{resource: db}, mode) do
-    with {:ok, resource} = Native.iterate(db, mode) do
-      Cursor.wrap_resource(resource, mode, decode_values: false)
-      |> Stream.map(&elem(&1, 0))
-    end
-  end
-
-  def stream_keys(%ColumnFamily{db_resource: db, cf_resource: cf}, mode) do
-    with {:ok, resource} = Native.iterate_cf(db, cf, mode) do
-      Cursor.wrap_resource(resource, mode, decode_values: false)
-      |> Stream.map(&elem(&1, 0))
-    end
-  end
-
-  @doc """
-  Return the approximate number of keys in the database or specified column family.
+  Return the approximate number of keys in the database.
 
   Implemented by calling GetIntProperty with `rocksdb.estimate-num-keys`
 
   """
-  @spec count(DB.t() | ColumnFamily.t()) :: non_neg_integer | {:error, any}
-  def count(%DB{resource: db}) do
-    Native.count(db)
-  end
 
-  def count(%ColumnFamily{db_resource: db, cf_resource: cf}) do
-    Native.count_cf(db, cf)
-  end
+  @spec count(DB.t()) :: non_neg_integer | {:error, any}
+  def count(%DB{resource: db}), do: Native.count(db)
 
   @doc """
-  Deletes the specified `key` from the provided database or column family.
+  Deletes the specified `key` from the provided database.
 
   Optionally takes a list of `write_opts`.
 
   """
-  @spec delete(DB.t() | ColumnFamily.t(), key, write_options) :: :ok | {:error, any}
-  def delete(db_or_cf, key, write_opts \\ [])
 
-  def delete(%DB{resource: db}, key, write_opts) do
-    Native.delete(db, key, to_map(write_opts))
-  end
+  @spec delete(DB.t(), key, write_options) :: :ok | {:error, any}
+  def delete(%DB{resource: db}, key, write_opts \\ []),
+    do: Native.delete(db, key, to_map(write_opts))
 
-  def delete(%ColumnFamily{db_resource: db, cf_resource: cf}, key, write_opts) do
-    Native.delete_cf(db, cf, key, to_map(write_opts))
-  end
+  @doc """
+  Deletes the specified `key` from the provided column family.
+
+  Optionally takes a list of `write_opts`.
+
+  """
+
+  @spec delete_cf(DB.t(), ColumnFamily.t(), key, write_options) :: :ok | {:error, any}
+  def delete_cf(%DB{resource: db}, cf, key, write_opts \\ []),
+    do: Native.delete_cf(db, cf, key, to_map(write_opts))
 
   defp to_map(map) when is_map(map), do: map
   defp to_map([]), do: %{}
   defp to_map(enum), do: Enum.into(enum, %{})
-
-  defp map_or_error(list, fun) do
-    do_map_or_error(list, fun, [])
-  end
-
-  defp do_map_or_error([], _fun, results), do: {:ok, :lists.reverse(results)}
-
-  defp do_map_or_error([item | rest], fun, results) do
-    case fun.(item) do
-      {:error, _} = err ->
-        err
-
-      {:ok, result} ->
-        do_map_or_error(rest, fun, [result | results])
-    end
-  end
 end

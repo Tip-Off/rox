@@ -4,8 +4,8 @@ defmodule Rox.Mixfile do
   def project do
     [
       app: :rox,
-      version: "2.3.0",
-      elixir: "~> 1.4",
+      version: "2.3.1",
+      elixir: "~> 1.7",
       build_embedded: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,
       compilers: [:rustler] ++ Mix.compilers(),
@@ -16,36 +16,19 @@ defmodule Rox.Mixfile do
     ]
   end
 
-  # Configuration for the OTP application
-  #
-  # Type "mix help compile.app" for more information
   def application do
     [extra_applications: [:logger]]
   end
 
-  # Type "mix help deps" for more examples and options
   defp deps do
     [
-      # Rust NIFs
-      {:rustler, "~> 0.18"},
-
-      # Doc generation
-      {:ex_doc, "~> 0.18", only: :dev},
-
-      # Benchmarking
-      {:benchfella, "~> 0.3.0", only: :dev},
-
-      # Generate fake data
-      {:faker, "~> 0.7", only: :dev},
-
-      # Computational flows
-      {:flow, "~> 0.14", only: :dev},
-
-      # Producers and consumers
-      {:gen_stage, "~> 0.14", only: :dev},
-
-      # Dialyzer support
-      {:dialyxir, "~> 1.0.0-rc.1", only: :dev, runtime: false}
+      {:rustler, "~> 0.21"},
+      {:ex_doc, "~> 0.22", only: :dev},
+      {:benchfella, "~> 0.3", only: :dev},
+      {:faker, "~> 0.14", only: :dev},
+      {:flow, "~> 1.0", only: :dev},
+      {:gen_stage, "~> 1.0", only: :dev},
+      {:dialyxir, "~> 1.0.0", only: :dev, runtime: false}
     ]
   end
 

@@ -11,14 +11,6 @@ defmodule Rox.Native do
     end
   end
 
-  def create_snapshot(_) do
-    case :erlang.phash2(1, 1) do
-      0 -> raise "Nif not loaded"
-      1 -> {:ok, ""}
-      2 -> {:error, ""}
-    end
-  end
-
   def count(_) do
     case :erlang.phash2(1, 1) do
       0 -> raise "Nif not loaded"
@@ -26,22 +18,7 @@ defmodule Rox.Native do
     end
   end
 
-  def count_cf(_, _) do
-    case :erlang.phash2(1, 1) do
-      0 -> raise "Nif not loaded"
-      1 -> 0
-    end
-  end
-
   def create_cf(_, _, _) do
-    case :erlang.phash2(1, 1) do
-      0 -> raise "Nif not loaded"
-      1 -> {:ok, ""}
-      2 -> {:error, ""}
-    end
-  end
-
-  def cf_handle(_, _) do
     case :erlang.phash2(1, 1) do
       0 -> raise "Nif not loaded"
       1 -> {:ok, ""}
@@ -93,35 +70,6 @@ defmodule Rox.Native do
   end
 
   def delete_cf(_, _, _, _) do
-    case :erlang.phash2(1, 1) do
-      0 -> raise "Nif not loaded"
-      1 -> :ok
-    end
-  end
-
-  def iterate(_, _) do
-    case :erlang.phash2(1, 1) do
-      0 -> raise "Nif not loaded"
-      1 -> {:ok, ""}
-    end
-  end
-
-  def iterate_cf(_, _, _) do
-    case :erlang.phash2(1, 1) do
-      0 -> raise "Nif not loaded"
-      1 -> {:ok, ""}
-    end
-  end
-
-  def iterator_next(_) do
-    case :erlang.phash2(1, 1) do
-      0 -> raise "Nif not loaded"
-      1 -> {"", ""}
-      2 -> :done
-    end
-  end
-
-  def iterator_reset(_, _) do
     case :erlang.phash2(1, 1) do
       0 -> raise "Nif not loaded"
       1 -> :ok

@@ -40,8 +40,7 @@ defmodule Rox.Batch do
 
   """
   @spec put(t, ColumnFamily.t(), Rox.key(), Rox.value()) :: t
-  def put(%Batch{operations: ops} = batch, %ColumnFamily{cf_resource: cf}, key, value)
-      when is_binary(key) do
+  def put(%Batch{operations: ops} = batch, cf, key, value) when is_binary(key) do
     %{batch | operations: [{:put_cf, {cf, key, Utils.encode(value)}} | ops]}
   end
 
@@ -59,8 +58,7 @@ defmodule Rox.Batch do
 
   """
   @spec delete(t, ColumnFamily.t(), Rox.key()) :: t
-  def delete(%Batch{operations: ops} = batch, %ColumnFamily{cf_resource: cf}, key)
-      when is_binary(key) do
+  def delete(%Batch{operations: ops} = batch, cf, key) when is_binary(key) do
     %{batch | operations: [{:delete_cf, {cf, key}} | ops]}
   end
 
@@ -70,9 +68,7 @@ defmodule Rox.Batch do
   """
   @spec write(t, DB.t()) :: :ok | {:error, reason :: any}
   def write(%Batch{operations: ops}, %DB{resource: db}) do
-    ops
-    |> :lists.reverse()
-    |> Native.batch_write(db)
+    ops |> Enum.reverse() |> Native.batch_write(db)
   end
 
   @doc """

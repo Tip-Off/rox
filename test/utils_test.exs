@@ -6,10 +6,7 @@ defmodule Rox.UtilsTest do
   test "encode / decode cycle" do
     input = %{name: "Bob"}
 
-    output =
-      input
-      |> encode
-      |> decode
+    output = input |> encode() |> decode()
 
     assert input == output
   end
