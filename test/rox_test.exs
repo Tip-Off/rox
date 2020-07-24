@@ -73,7 +73,7 @@ defmodule RoxTest do
       assert :ok =
                Batch.new()
                |> Batch.put("batch_put_test", "works")
-               |> Batch.put(@cf, "batch_put_test", "works")
+               |> Batch.put_cf(@cf, "batch_put_test", "works")
                |> Batch.write(db)
 
       assert {:ok, "works"} = Rox.get(db, "batch_put_test")

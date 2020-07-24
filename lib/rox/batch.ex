@@ -30,18 +30,19 @@ defmodule Rox.Batch do
   Returns a new `Batch` with a put operation scheduled.
 
   """
-  @spec put(t, Rox.key(), Rox.value()) :: t
-  def put(%Batch{operations: ops} = batch, key, value) when is_binary(key) do
-    %{batch | operations: [{:put, {key, Utils.encode(value)}} | ops]}
+  @spec put(t, Rox.key(), Rox.value(), Rox.write_options()) :: t
+  def put(%Batch{operations: ops} = batch, key, value, write_opts \\ []) when is_binary(key) do
+    %{batch | operations: [{:put, {key, Utils.encode(value, write_opts)}} | ops]}
   end
 
   @doc """
   Returns a new `Batch` with a put operation scheduled for the `column_family`.
 
   """
-  @spec put(t, ColumnFamily.t(), Rox.key(), Rox.value()) :: t
-  def put(%Batch{operations: ops} = batch, cf, key, value) when is_binary(key) do
-    %{batch | operations: [{:put_cf, {cf, key, Utils.encode(value)}} | ops]}
+  @spec put_cf(t, ColumnFamily.t(), Rox.key(), Rox.value(), Rox.write_options()) :: t
+  def put_cf(%Batch{operations: ops} = batch, cf, key, value, write_opts \\ [])
+      when is_binary(key) do
+    %{batch | operations: [{:put_cf, {cf, key, Utils.encode(value, write_opts)}} | ops]}
   end
 
   @doc """
