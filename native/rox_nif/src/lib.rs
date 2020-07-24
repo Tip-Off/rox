@@ -122,8 +122,6 @@ mod atoms {
         // atom db_log_dir;
         // atom wal_dir;
         // atom delete_obsolete_files_period_micros;
-        // atom max_background_compactions;
-        // atom max_background_flushes;
         // atom max_log_file_size;
         // atom log_file_time_to_roll;
         // atom keep_log_file_num;
