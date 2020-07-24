@@ -59,7 +59,9 @@ defmodule Rox do
           | {:use_direct_io_for_flush_and_compaction, boolean}
         ]
 
-  @type write_options :: [{:sync, boolean} | {:disable_wal, boolean}]
+  @type write_options :: [
+          {:sync, boolean} | {:disable_wal, boolean} | {:erl_compression, non_neg_integer}
+        ]
 
   @doc """
   Open a RocksDB with the optional `db_opts` and `column_families`.
@@ -144,8 +146,11 @@ defmodule Rox do
 
   @spec put(DB.t(), key, value, write_options) :: :ok | {:error, any}
   def put(%DB{resource: db}, key, value, write_opts \\ [])
-      when is_binary(key) and is_list(write_opts),
-      do: Native.put(db, key, Utils.encode(value), to_map(write_opts))
+      when is_binary(key) and is_list(write_opts) do
+    {erl_compression, write_opts} = Keyword.pop_values(write_opts, :erl_compression)
+
+    Native.put(db, key, Utils.encode(value, erl_compression), to_map(write_opts))
+  end
 
   @doc """
   Put a key/value pair into the specified column family.
@@ -157,8 +162,11 @@ defmodule Rox do
   """
 
   @spec put_cf(DB.t(), ColumnFamily.t(), key, value, write_options) :: :ok | {:error, any}
-  def put_cf(%DB{resource: db}, cf, key, value, write_opts \\ []) when is_binary(key),
-    do: Native.put_cf(db, cf, key, Utils.encode(value), to_map(write_opts))
+  def put_cf(%DB{resource: db}, cf, key, value, write_opts \\ []) when is_binary(key) do
+    {erl_compression, write_opts} = Keyword.pop_values(write_opts, :erl_compression)
+
+    Native.put_cf(db, cf, key, Utils.encode(value, erl_compression), to_map(write_opts))
+  end
 
   @doc """
   Get a key/value pair in the given database with the specified `key`.
