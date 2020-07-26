@@ -642,6 +642,38 @@ fn batch_write<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
     Ok(atoms::ok().encode(env))
 }
 
+fn property<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
+    let db_arc: ResourceArc<DBHandle> = args[0].decode()?;
+    let db = db_arc.deref().db.read().unwrap();
+
+    let property: String = args[1].decode()?;
+
+    let val_option = handle_error!(env, db.property_value(&property));
+
+    match val_option {
+        Some(val) => {
+            Ok((atoms::ok(), (val as String).encode(env)).encode(env))
+        }
+        None => Ok(atoms::not_found().encode(env)),
+    }
+}
+
+fn property_int<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
+    let db_arc: ResourceArc<DBHandle> = args[0].decode()?;
+    let db = db_arc.deref().db.read().unwrap();
+
+    let property: String = args[1].decode()?;
+
+    let val_option = handle_error!(env, db.property_int_value(&property));
+
+    match val_option {
+        Some(val) => {
+            Ok((atoms::ok(), (val as u64).encode(env)).encode(env))
+        }
+        None => Ok(atoms::not_found().encode(env)),
+    }
+}
+
 rustler_export_nifs!(
     "Elixir.Rox.Native",
     [
@@ -656,6 +688,8 @@ rustler_export_nifs!(
         ("get", 2, get),
         ("get_cf", 3, get_cf),
         ("batch_write", 2, batch_write),
+        ("property", 2, property),
+        ("property_int", 2, property_int)
     ],
     Some(on_load)
 );

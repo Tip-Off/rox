@@ -83,4 +83,20 @@ defmodule Rox.Native do
       2 -> {:error, ""}
     end
   end
+
+  def property(_, _) do
+    case :erlang.phash2(1, 1) do
+      0 -> raise "Nif not loaded"
+      1 -> :ok
+      2 -> {:error, ""}
+    end
+  end
+
+  def property_int(_, _) do
+    case :erlang.phash2(1, 1) do
+      0 -> raise "Nif not loaded"
+      1 -> :ok
+      2 -> {:error, ""}
+    end
+  end
 end

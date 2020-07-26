@@ -221,6 +221,12 @@ defmodule Rox do
   def delete_cf(%DB{resource: db}, cf, key, write_opts \\ []),
     do: Native.delete_cf(db, cf, key, to_map(write_opts))
 
+  @doc "Retrieves a RocksDB property by name."
+  def property(%DB{resource: db}, property), do: Native.property(db, property)
+
+  @doc "Retrieves a RocksDB property by name and casts it to an integer."
+  def property_int(%DB{resource: db}, property), do: Native.property_int(db, property)
+
   defp db_options_to_map(db_options),
     do: db_options |> to_map() |> Map.update(:block_based_options, %{}, &to_map(&1))
 
