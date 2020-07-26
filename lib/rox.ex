@@ -19,6 +19,7 @@ defmodule Rox do
           | {:block_size, pos_integer}
           | {:metadata_block_size, pos_integer}
           | {:cache_index_and_filter_blocks, boolean}
+          | {:pin_l0_filter_and_index_blocks_in_cache, boolean}
         ]
 
   @type access_hint :: :normal | :sequential | :willneed | :none

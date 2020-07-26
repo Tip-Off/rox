@@ -46,7 +46,7 @@ mod atoms {
         // atom bloom_filter;
         atom cache_index_and_filter_blocks;
         // atom index_type;
-        // atom pin_l0_filter_and_index_blocks_in_cache;
+        atom pin_l0_filter_and_index_blocks_in_cache;
         // atom pin_top_level_index_and_filter;
         // atom format_version;
         // atom block_restart_interval;
@@ -274,6 +274,12 @@ fn decode_block_based_options<'a>(env: Env<'a>, arg: Term<'a>) -> NifResult<Bloc
     if let Ok(cache_index_and_filter_blocks) =
         arg.map_get(atoms::cache_index_and_filter_blocks().to_term(env)) {
         opts.set_cache_index_and_filter_blocks(cache_index_and_filter_blocks.decode()?);
+        }
+
+    if let Ok(pin_l0_filter_and_index_blocks_in_cache) =
+        arg.map_get(atoms::pin_l0_filter_and_index_blocks_in_cache().to_term(env)) {
+            opts.set_pin_l0_filter_and_index_blocks_in_cache(
+                pin_l0_filter_and_index_blocks_in_cache.decode()?);
     }
 
     if let Ok(no_block_cache) = arg.map_get(atoms::no_block_cache().to_term(env)) {
