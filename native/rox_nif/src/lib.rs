@@ -463,6 +463,17 @@ fn count<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
     Ok((count as u64).encode(env))
 }
 
+fn flush<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
+    let db_arc: ResourceArc<DBHandle> = args[0].decode()?;
+    let db = db_arc.db.write().unwrap();
+
+
+    let _resp = handle_error!(env, db.flush());
+
+    Ok(atoms::ok().encode(env))
+}
+
+
 fn create_cf<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
     let db_arc: ResourceArc<DBHandle> = args[0].decode()?;
     let mut db = db_arc.db.write().unwrap();
@@ -727,6 +738,7 @@ rustler_export_nifs!(
     "Elixir.Rox.Native",
     [
         ("open", 3, open),
+        ("flush", 1, flush),
         ("create_cf", 3, create_cf),
         ("put", 4, put),
         ("put_cf", 5, put_cf),

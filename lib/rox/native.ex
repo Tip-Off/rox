@@ -18,6 +18,14 @@ defmodule Rox.Native do
     end
   end
 
+  def flush(_) do
+    case :erlang.phash2(1, 1) do
+      0 -> raise "Nif not loaded"
+      1 -> {:ok, ""}
+      2 -> {:error, ""}
+    end
+  end
+
   def create_cf(_, _, _) do
     case :erlang.phash2(1, 1) do
       0 -> raise "Nif not loaded"
