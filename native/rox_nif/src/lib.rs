@@ -102,6 +102,7 @@ mod atoms {
         atom min_write_buffer_number;
         atom max_write_buffer_number;
         atom write_buffer_size;
+        atom db_write_buffer_size;
         atom max_bytes_for_level_base;
         atom max_bytes_for_level_multiplier;
         atom max_manifest_file_size;
@@ -351,6 +352,11 @@ fn decode_db_options<'a>(env: Env<'a>, arg: Term<'a>) -> NifResult<Options> {
     if let Ok(size) = arg.map_get(atoms::write_buffer_size().to_term(env)) {
         let i_size: u64 = size.decode()?;
         opts.set_write_buffer_size(i_size as usize);
+    }
+
+    if let Ok(size) = arg.map_get(atoms::db_write_buffer_size().to_term(env)) {
+        let i_size: u64 = size.decode()?;
+        opts.set_db_write_buffer_size(i_size as usize);
     }
 
     if let Ok(max_bytes) = arg.map_get(atoms::max_bytes_for_level_base().to_term(env)) {

@@ -43,6 +43,7 @@ defmodule Rox do
           | {:min_write_buffer_number, pos_integer}
           | {:max_write_buffer_number, pos_integer}
           | {:write_buffer_size, pos_integer}
+          | {:db_write_buffer_size, pos_integer}
           | {:max_bytes_for_level_base, pos_integer}
           | {:max_bytes_for_level_multiplier, pos_integer}
           | {:max_manifest_file_size, pos_integer}
