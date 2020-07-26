@@ -224,8 +224,18 @@ defmodule Rox do
   @doc "Retrieves a RocksDB property by name."
   def property(%DB{resource: db}, property), do: Native.property(db, property)
 
+  @doc "Retrieves a RocksDB property by name for a specific column family."
+  def property_cf(%DB{resource: db}, cf, property), do: Native.property_cf(db, cf, property)
+
   @doc "Retrieves a RocksDB property by name and casts it to an integer."
   def property_int(%DB{resource: db}, property), do: Native.property_int(db, property)
+
+  @doc """
+  Retrieves a RocksDB property by name and casts it to an integer for a specific
+  column family.
+  """
+  def property_int_cf(%DB{resource: db}, cf, property),
+    do: Native.property_int_cf(db, cf, property)
 
   defp db_options_to_map(db_options),
     do: db_options |> to_map() |> Map.update(:block_based_options, %{}, &to_map(&1))

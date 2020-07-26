@@ -658,6 +658,25 @@ fn property<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
     }
 }
 
+fn property_cf<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
+    let db_arc: ResourceArc<DBHandle> = args[0].decode()?;
+    let db = db_arc.deref().db.read().unwrap();
+
+    let cf: String = args[1].decode()?;
+    let cf_handle = db.cf_handle(&cf.as_str()).unwrap();
+
+    let property: String = args[2].decode()?;
+
+    let val_option = handle_error!(env, db.property_value_cf(cf_handle, &property));
+
+    match val_option {
+        Some(val) => {
+            Ok((atoms::ok(), (val as String).encode(env)).encode(env))
+        }
+        None => Ok(atoms::not_found().encode(env)),
+    }
+}
+
 fn property_int<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
     let db_arc: ResourceArc<DBHandle> = args[0].decode()?;
     let db = db_arc.deref().db.read().unwrap();
@@ -665,6 +684,25 @@ fn property_int<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
     let property: String = args[1].decode()?;
 
     let val_option = handle_error!(env, db.property_int_value(&property));
+
+    match val_option {
+        Some(val) => {
+            Ok((atoms::ok(), (val as u64).encode(env)).encode(env))
+        }
+        None => Ok(atoms::not_found().encode(env)),
+    }
+}
+
+fn property_int_cf<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
+    let db_arc: ResourceArc<DBHandle> = args[0].decode()?;
+    let db = db_arc.deref().db.read().unwrap();
+
+    let cf: String = args[1].decode()?;
+    let cf_handle = db.cf_handle(&cf.as_str()).unwrap();
+
+    let property: String = args[2].decode()?;
+
+    let val_option = handle_error!(env, db.property_int_value_cf(cf_handle, &property));
 
     match val_option {
         Some(val) => {
@@ -689,7 +727,9 @@ rustler_export_nifs!(
         ("get_cf", 3, get_cf),
         ("batch_write", 2, batch_write),
         ("property", 2, property),
-        ("property_int", 2, property_int)
+        ("property_cf", 3, property_cf),
+        ("property_int", 2, property_int),
+        ("property_int_cf", 3, property_int_cf)
     ],
     Some(on_load)
 );
