@@ -69,7 +69,7 @@ defmodule Rox do
   @doc """
   Open a RocksDB with the optional `db_opts` and `column_families`.
 
-  If `column_families` are provided, a 3 element tuple will be returned with
+  If `cfs` are provided, a 3 element tuple will be returned with
   the second element being a map of column family names to `Rox.ColumnFamily` handles.
   The column families must have already been created via `create_cf` or the option
   `auto_create_column_families` can be set to `true`. If it is, the `db_opts` will be
@@ -80,24 +80,24 @@ defmodule Rox do
 
   """
   @spec open(file_path, db_options, [ColumnFamily.t()]) :: {:ok, DB.t()} | {:error, any}
-  def open(path, db_opts \\ [], column_families \\ [])
-      when is_binary(path) and is_list(db_opts) and is_list(column_families) do
+  def open(path, db_opts \\ [], cfs \\ [], cf_opts \\ [])
+      when is_binary(path) and is_list(db_opts) and is_list(cfs) and is_list(cf_opts) do
     auto_create_cfs? = db_opts[:auto_create_column_families]
 
     db_opts = db_options_to_map(db_opts)
 
-    case column_families do
+    case cfs do
       [] ->
         do_open_db_with_no_cf(path, db_opts)
 
       _ ->
         # First try opening with existing column families
-        with {:ok, db} <- Native.open(path, db_opts, column_families) do
+        with {:ok, db} <- Native.open(path, db_opts, cfs, db_options_to_map(cf_opts)) do
           {:ok, DB.wrap_resource(db)}
         else
           {:error, <<"Invalid argument: Column family not found:", _rest::binary>>}
           when auto_create_cfs? ->
-            do_open_db_and_create_cfs(path, db_opts, column_families)
+            do_open_db_and_create_cfs(path, db_opts, cfs, cf_opts)
 
           other ->
             other
@@ -106,14 +106,14 @@ defmodule Rox do
   end
 
   defp do_open_db_with_no_cf(path, opts) do
-    with {:ok, db} <- Native.open(path, opts, []) do
+    with {:ok, db} <- Native.open(path, opts, [], %{}) do
       {:ok, DB.wrap_resource(db)}
     end
   end
 
-  defp do_open_db_and_create_cfs(path, opts, column_families) do
+  defp do_open_db_and_create_cfs(path, opts, cfs, cf_opts) do
     with {:ok, db} <- do_open_db_with_no_cf(path, opts) do
-      Enum.each(column_families, fn cf -> :ok = create_cf(db, cf, opts) end)
+      Enum.each(cfs, fn cf -> :ok = create_cf(db, cf, cf_opts) end)
 
       {:ok, db}
     end

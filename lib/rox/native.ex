@@ -3,7 +3,7 @@ defmodule Rox.Native do
 
   @dialyzer {:nowarn_function, [__init__: 0]}
 
-  def open(_, _, _) do
+  def open(_, _, _, _) do
     case :erlang.phash2(1, 1) do
       0 -> raise "Nif not loaded"
       1 -> {:ok, ""}

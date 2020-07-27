@@ -11,7 +11,7 @@ use rustler::resource::ResourceArc;
 
 use rustler::{Decoder, Encoder, Env, Error, NifResult, Term};
 
-use rocksdb::{DBCompressionType, IteratorMode, Options, WriteBatch, WriteOptions, BlockBasedOptions, DB};
+use rocksdb::{DBCompressionType, IteratorMode, Options, WriteBatch, WriteOptions, BlockBasedOptions, DB, ColumnFamilyDescriptor};
 
 use rustler::types::binary::{Binary, OwnedBinary};
 use rustler::types::list::ListIterator;
@@ -436,7 +436,7 @@ fn open<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
         Options::default()
     };
 
-    let cf: Vec<&str> = if args[2].list_length()? == 0 {
+    let cfs: Vec<&str> = if args[2].list_length()? == 0 {
         vec![]
     } else {
         let iter: ListIterator = args[2].decode()?;
@@ -445,7 +445,26 @@ fn open<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
         result
     };
 
-    let db: DB = handle_error!(env, DB::open_cf(&db_opts, path, &cf));
+    let cf_opts_available = if args[3].map_size()? > 0 {
+        true
+    } else {
+        false
+    };
+
+    let cfs = cfs.into_iter().map(|name| {
+        let cf_opts = if cf_opts_available {
+            match decode_db_options(env, args[3]) {
+                Ok(opts) => opts,
+                Err(_) => Options::default()
+            }
+        } else {
+            Options::default()
+        };
+
+        return ColumnFamilyDescriptor::new(name, cf_opts);
+    });
+
+    let db: DB = handle_error!(env, DB::open_cf_descriptors(&db_opts, path, cfs));
 
     let resp = (
         atoms::ok(),
@@ -743,7 +762,7 @@ fn property_int_cf<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
 rustler_export_nifs!(
     "Elixir.Rox.Native",
     [
-        ("open", 3, open),
+        ("open", 4, open),
         ("flush", 1, flush),
         ("create_cf", 3, create_cf),
         ("put", 4, put),
