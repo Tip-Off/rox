@@ -128,7 +128,7 @@ defmodule Rox do
 
   @doc "Compacts entire database."
   @spec compact(DB.t()) :: :ok | {:error, any}
-  def flush(%DB{resource: raw_db}), do: Native.compact(raw_db)
+  def compact(%DB{resource: raw_db}), do: Native.compact(raw_db)
 
   @doc """
   Create a column family in `db` with `name` and `opts`.
