@@ -492,8 +492,19 @@ fn flush<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
     let db_arc: ResourceArc<DBHandle> = args[0].decode()?;
     let db = db_arc.db.write().unwrap();
 
-
     let _resp = handle_error!(env, db.flush());
+
+    Ok(atoms::ok().encode(env))
+}
+
+fn compact<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
+    let db_arc: ResourceArc<DBHandle> = args[0].decode()?;
+    let db = db_arc.db.write().unwrap();
+
+    let start: Option<&[u8]> = None;
+    let end: Option<&[u8]> = None;
+
+    db.compact_range(start, end);
 
     Ok(atoms::ok().encode(env))
 }
@@ -764,6 +775,7 @@ rustler_export_nifs!(
     [
         ("open", 4, open),
         ("flush", 1, flush),
+        ("compact", 1, compact),
         ("create_cf", 3, create_cf),
         ("put", 4, put),
         ("put_cf", 5, put_cf),
