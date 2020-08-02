@@ -67,6 +67,19 @@ defmodule Rox do
         ]
 
   @doc """
+  Open a RocksDB with the optional `db_opts` and a ttl duration.
+
+  """
+  @spec open_with_ttl(file_path, db_options, integer) :: {:ok, DB.t()} | {:error, any}
+  def open_with_ttl(path, duration, db_opts \\ []) when is_binary(path) and is_list(db_opts) do
+    db_opts = db_options_to_map(db_opts)
+
+    with {:ok, db} <- Native.open_with_ttl(path, db_opts, duration) do
+      {:ok, DB.wrap_resource(db)}
+    end
+  end
+
+  @doc """
   Open a RocksDB with the optional `db_opts` and `column_families`.
 
   If `cfs` are provided, a 3 element tuple will be returned with

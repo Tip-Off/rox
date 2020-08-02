@@ -13,6 +13,8 @@ rustler = "0.21"
 rustler_codegen = "0.21"
 
 [dependencies.rocksdb]
-version = "0.14"
+# version = "0.14"
+git = "https://github.com/rust-rocksdb/rust-rocksdb"
+branch = "master"
 default-features = false
 features = ["lz4"]

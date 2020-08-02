@@ -6,6 +6,7 @@ use std::io::Write;
 use std::ops::Deref;
 use std::path::Path;
 use std::sync::{Arc, RwLock};
+use std::time::Duration;
 
 use rustler::resource::ResourceArc;
 
@@ -427,6 +428,31 @@ fn decode_db_options<'a>(env: Env<'a>, arg: Term<'a>) -> NifResult<Options> {
     Ok(opts)
 }
 
+fn open_with_ttl<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
+    let path: &Path = Path::new(args[0].decode()?);
+
+    let db_opts = if args[1].map_size()? > 0 {
+        decode_db_options(env, args[1])?
+    } else {
+        Options::default()
+    };
+
+    let duration_in_seconds: u64 = args[2].decode()?;
+
+    let duration = Duration::from_secs(duration_in_seconds);
+
+    let db: DB = handle_error!(env, DB::open_with_ttl(&db_opts, path, duration));
+
+    let resp = (
+        atoms::ok(),
+        ResourceArc::new(DBHandle {
+            db: Arc::new(RwLock::new(db)),
+        }),
+    ).encode(env);
+
+    Ok(resp)
+}
+
 fn open<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
     let path: &Path = Path::new(args[0].decode()?);
 
@@ -774,6 +800,7 @@ rustler_export_nifs!(
     "Elixir.Rox.Native",
     [
         ("open", 4, open),
+        ("open_with_ttl", 3, open_with_ttl),
         ("flush", 1, flush),
         ("compact", 1, compact),
         ("create_cf", 3, create_cf),
